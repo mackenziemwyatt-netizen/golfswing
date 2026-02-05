@@ -6,7 +6,7 @@ import numpy as np
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from golf_data import get_data_and_filters
+from golf_data import get_data_and_filters, render_session_banner
 
 # Constants
 G = 9.81  # m/s^2
@@ -54,6 +54,7 @@ def trajectory_2d(launch_angle_deg, ball_speed_mph, carry_distance_yd, spin_rate
 
 
 all_dfs, df = get_data_and_filters()
+render_session_banner()
 if df is None or len(df) == 0:
     st.info("👆 Upload CSV files on **Home** to see ball flight.")
     st.stop()

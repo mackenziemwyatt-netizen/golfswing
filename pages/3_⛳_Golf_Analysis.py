@@ -1,9 +1,18 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from golf_data import get_data_and_filters
+from golf_data import get_data_and_filters, render_session_banner
+from pga_tour_data import (
+    PGA_TABLE_CSS,
+    build_comparison_by_club,
+    build_pga_comparison_table_html,
+    build_pga_reference_only_html,
+    gap_analysis_ordered,
+    PGA_METRIC_COLUMNS,
+)
 
 all_dfs, df = get_data_and_filters()
+render_session_banner()
 if df is None or len(df) == 0:
     st.info("👆 Upload CSV files on **Home** to see golf analysis.")
     st.stop()
@@ -64,6 +73,33 @@ with col2:
             hover_data=["Launch Angle"] if "Launch Angle" in df.columns else None,
         )
         st.plotly_chart(fig, use_container_width=True)
+
+# PGA Tour averages comparison (orange/white TrackMan-style)
+st.markdown("---")
+st.subheader("🏆 PGA Tour Averages Comparison")
+st.caption("TrackMan PGA Tour averages (yards). **Green** = within 10% of tour · **Yellow** = 10–25% off · **Red** = >25% off.")
+st.markdown(PGA_TABLE_CSS, unsafe_allow_html=True)
+if "Club Type" in df.columns:
+    pga_metrics_in_df = [m[1] for m in PGA_METRIC_COLUMNS if m[1] in df.columns]
+    if pga_metrics_in_df:
+        comparison_list = build_comparison_by_club(df)
+        metrics_to_show = [m[0] for m in PGA_METRIC_COLUMNS if m[1] in df.columns]
+        if comparison_list and metrics_to_show:
+            st.markdown("**My stats vs PGA Tour (by club)**")
+            st.markdown(build_pga_comparison_table_html(comparison_list, metrics_to_show), unsafe_allow_html=True)
+            closest, need_work = gap_analysis_ordered(comparison_list)
+            st.markdown("**Gap analysis**")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("*Closest to tour level*")
+                for c in closest:
+                    st.markdown(f'<span class="pga-gap-box pga-gap-closest">{c["club_type"]} (avg {c["avg_gap_pct"]:.1f}% off)</span>', unsafe_allow_html=True)
+            with col_b:
+                st.markdown("*Need the most work*")
+                for c in need_work:
+                    st.markdown(f'<span class="pga-gap-box pga-gap-work">{c["club_type"]} (avg {c["avg_gap_pct"]:.1f}% off)</span>', unsafe_allow_html=True)
+st.markdown("**PGA Tour reference (TrackMan averages)**")
+st.markdown(build_pga_reference_only_html(), unsafe_allow_html=True)
 
 if "Club Type" in df.columns:
     st.subheader("Performance by Club Type")

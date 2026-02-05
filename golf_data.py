@@ -123,27 +123,76 @@ def render_sidebar_upload_and_files():
     return uploaded
 
 
+def _unique_practice_dates(df_all):
+    """Return sorted list of (date_value, display_label) from Date column."""
+    if df_all is None or "Date" not in df_all.columns:
+        return []
+    dates = df_all["Date"].dropna()
+    if len(dates) == 0:
+        return []
+    try:
+        ts = pd.to_datetime(dates, errors="coerce")
+        ts = ts.dt.normalize().dt.tz_localize(None)
+        unique = sorted(ts.unique())
+        return [(d, d.strftime("%b %d, %Y")) for d in unique]
+    except Exception:
+        return []
+
+
+def get_selected_session_label():
+    """Return the current session selection for display: 'All Sessions' or a formatted date."""
+    return st.session_state.get("golf_selected_session_label", "All Sessions")
+
+
+def render_session_banner():
+    """Show selected session prominently at top of page when a single session is selected."""
+    label = get_selected_session_label()
+    if label != "All Sessions":
+        st.info(f"📅 **Viewing session: {label}** — Switch to *All Sessions* in the sidebar to see combined data.")
+
+
 def render_sidebar_filters(df_all):
-    """Render club/date filters in sidebar and return filtered dataframe."""
+    """Render club and session filters in sidebar and return filtered dataframe."""
     if df_all is None or len(df_all) == 0:
         return None
     st.sidebar.header("🔍 Filters")
     df = df_all.copy()
+
+    # Session / date selector: All Sessions or a specific practice date (only when Date column exists)
+    if "Date" in df_all.columns:
+        practice_dates = _unique_practice_dates(df_all)
+        session_options = ["All Sessions"]
+        session_values = [None]  # None = no date filter
+        for date_val, display_label in practice_dates:
+            session_options.append(display_label)
+            session_values.append(date_val)
+        prev_label = st.session_state.get("golf_selected_session_label", "All Sessions")
+        default_idx = 0
+        if prev_label in session_options:
+            default_idx = session_options.index(prev_label)
+        selected_label = st.sidebar.selectbox(
+            "📅 Practice session",
+            session_options,
+            index=default_idx,
+            help="Choose a single session to analyze that day only, or All Sessions to combine data.",
+        )
+        selected_value = session_values[session_options.index(selected_label)]
+        st.session_state["golf_selected_session_value"] = selected_value
+        st.session_state["golf_selected_session_label"] = selected_label
+    else:
+        st.session_state["golf_selected_session_value"] = None
+        st.session_state["golf_selected_session_label"] = "All Sessions"
+        selected_value = None
+    if selected_value is not None:
+        df["_date_norm"] = pd.to_datetime(df["Date"], errors="coerce").dt.normalize().dt.tz_localize(None)
+        target = pd.Timestamp(selected_value).normalize() if hasattr(selected_value, "normalize") else pd.Timestamp(selected_value)
+        df = df[df["_date_norm"] == target].drop(columns=["_date_norm"], errors="ignore")
+
     if "Club Type" in df.columns:
         club_types = ["All"] + sorted(df["Club Type"].dropna().unique().tolist())
         selected_club = st.sidebar.selectbox("Club Type", club_types)
         if selected_club != "All":
             df = df[df["Club Type"] == selected_club]
-    if "Date" in df.columns and df["Date"].notna().any():
-        dates = df["Date"].dropna()
-        if len(dates) > 0:
-            min_date = dates.min()
-            max_date = dates.max()
-            min_d = min_date.date() if hasattr(min_date, "date") else min_date
-            max_d = max_date.date() if hasattr(max_date, "date") else max_date
-            date_range = st.sidebar.date_input("Date range", value=(min_d, max_d), min_value=min_d, max_value=max_d)
-            if len(date_range) == 2:
-                df = df[(df["Date"] >= pd.Timestamp(date_range[0])) & (df["Date"] <= pd.Timestamp(date_range[1]))]
     return df
 
 

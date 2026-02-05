@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from golf_data import get_data_and_filters
+from golf_data import get_data_and_filters, render_session_banner
 
 st.set_page_config(
     page_title="Golf Swing Data Analyzer",
@@ -12,6 +12,7 @@ st.title("⛳ Golf Swing Data Analyzer")
 st.markdown("Upload CSV file(s) with golf swing data. Files are saved and **automatically loaded** on all pages. Use the sidebar to filter and manage files.")
 
 all_dfs, df = get_data_and_filters()
+render_session_banner()
 
 if df is None or len(df) == 0:
     st.info("👆 Upload one or more CSV files in the **sidebar** to get started.")
@@ -54,6 +55,7 @@ else:
     st.markdown("""
     | Page | Description |
     |------|-------------|
+    | **📊 Dashboard** | TrackMan-style launch monitor view: key metrics in large cards, session average or single-shot view |
     | **📊 Overview** | Full dataset overview, preview, column info |
     | **📐 Consistency** | Dispersion scores and gauges (club path, face, speed) |
     | **⛳ Golf Analysis** | Club speed/distance charts, performance by club type |

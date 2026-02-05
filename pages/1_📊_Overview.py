@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
-from golf_data import get_data_and_filters
+from golf_data import get_data_and_filters, render_session_banner
 
 all_dfs, df = get_data_and_filters()
+render_session_banner()
 if df is None or len(df) == 0:
     st.info("👆 Upload CSV files on **Home** to see the overview.")
     st.stop()
